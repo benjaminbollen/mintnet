@@ -537,6 +537,14 @@ func stopTMApp(mach, app string) error {
 	return nil
 }
 
+func stopTMData(mach, app string) error {
+	args := []string{"ssh", mach, Fmt(`docker stop %v_tmdata`, app)}
+	if !runProcess("stop-tmdata-"+mach, "docker-machine", args) {
+		return errors.New("Failed to stop tmdata on machine " + mach)
+	}
+	return nil
+}
+
 //--------------------------------------------------------------------------------
 
 func cmdRm(c *cli.Context) {
@@ -557,6 +565,7 @@ func cmdRm(c *cli.Context) {
 				defer wg.Done()
 				stopTMNode(mach, app)
 				stopTMApp(mach, app)
+				stopTMData(mach, app)
 			}(mach)
 		}
 		wg.Wait()
@@ -569,6 +578,7 @@ func cmdRm(c *cli.Context) {
 		go func(mach string) {
 			defer wg.Done()
 			rmTMCommon(mach, app)
+			rmTMData(mach, app)
 			rmTMApp(mach, app)
 			rmTMNode(mach, app)
 		}(mach)
@@ -580,6 +590,14 @@ func rmTMCommon(mach, app string) error {
 	args := []string{"ssh", mach, Fmt(`docker rm %v_tmcommon`, app)}
 	if !runProcess("rm-tmcommon-"+mach, "docker-machine", args) {
 		return errors.New("Failed to rm tmcommon on machine " + mach)
+	}
+	return nil
+}
+
+func rmTMData(mach, app string) error {
+	args := []string{"ssh", mach, Fmt(`docker rm %v_tmdata`, app)}
+	if !runProcess("rm-tmdata-"+mach, "docker-machine", args) {
+		return errors.New("Failed to rm tmdata on machine " + mach)
 	}
 	return nil
 }
