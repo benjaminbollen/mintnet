@@ -19,6 +19,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "mintnet"
+	app.Version = "0.0.1"
 	app.Usage = "mintnet [command] [args...]"
 	app.Commands = []cli.Command{
 		{
