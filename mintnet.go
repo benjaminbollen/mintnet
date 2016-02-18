@@ -372,17 +372,17 @@ func cmdStart(c *cli.Context) {
 		seeds[i] = ip + ":46656"
 	}
 
-	// Initialize TMCommon, TMApp, and TMNode container on each machine
+	// Initialize TMCommon, TMApp, and TMCore container on each machine
 	var wg sync.WaitGroup
 	for _, mach := range machines {
 		wg.Add(1)
 		go func(mach string) {
 			defer wg.Done()
 			startTMCommon(mach, app)
-			copyNodeDir(mach, app, base)
+			copyCoreDir(mach, app, base)
 			startTMData(mach, app)
 			startTMApp(mach, app)
-			startTMNode(mach, app, seeds)
+			startTMCore(mach, app, seeds)
 		}(mach)
 	}
 	wg.Wait()
@@ -416,7 +416,7 @@ func startTMCommon(mach, app string) error {
 	return nil
 }
 
-func copyNodeDir(mach, app, base string) error {
+func copyCoreDir(mach, app, base string) error {
 	err := copyToMachine(mach, app, path.Join(base, "data"), "/data/tendermint/data", true)
 	if err != nil {
 		return err
@@ -461,7 +461,7 @@ func startTMApp(mach, app string) error {
 	return nil
 }
 
-func startTMNode(mach, app string, seeds []string) error {
+func startTMCore(mach, app string, seeds []string) error {
 	proxyApp := Fmt("tcp://%v_tmapp:46658", app)
 	tmRoot := "/data/tendermint/core"
 	args := []string{"ssh", mach, Fmt(`docker run --name %v_tmnode --volumes-from %v_tmcommon -d `+
@@ -504,20 +504,20 @@ func cmdStop(c *cli.Context) {
 	app := args[0]
 	machines := ParseMachines(c.String("machines"))
 
-	// Initialize TMCommon, TMData, TMApp, and TMNode container on each machine
+	// Initialize TMCommon, TMData, TMApp, and TMCore container on each machine
 	var wg sync.WaitGroup
 	for _, mach := range machines {
 		wg.Add(1)
 		go func(mach string) {
 			defer wg.Done()
-			stopTMNode(mach, app)
+			stopTMCore(mach, app)
 			stopTMApp(mach, app)
 		}(mach)
 	}
 	wg.Wait()
 }
 
-func stopTMNode(mach, app string) error {
+func stopTMCore(mach, app string) error {
 	args := []string{"ssh", mach, Fmt(`docker stop %v_tmnode`, app)}
 	if !runProcess("stop-tmnode-"+mach, "docker-machine", args) {
 		return errors.New("Failed to stop tmnode on machine " + mach)
@@ -552,7 +552,7 @@ func cmdRm(c *cli.Context) {
 	machines := ParseMachines(c.String("machines"))
 	force := c.Bool("force")
 
-	// Remove TMCommon, TMApp, and TMNode container on each machine
+	// Remove TMCommon, TMApp, and TMCore container on each machine
 	var wg sync.WaitGroup
 	for _, mach := range machines {
 		wg.Add(1)
