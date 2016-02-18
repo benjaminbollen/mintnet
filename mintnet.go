@@ -557,64 +557,31 @@ func cmdRm(c *cli.Context) {
 	machines := ParseMachines(c.String("machines"))
 	force := c.Bool("force")
 
-	if force {
-		// Stop TMNode/TMApp if running
-		var wg sync.WaitGroup
-		for _, mach := range machines {
-			wg.Add(1)
-			go func(mach string) {
-				defer wg.Done()
-				stopTMNode(mach, app)
-				stopTMApp(mach, app)
-				stopTMData(mach, app)
-			}(mach)
-		}
-		wg.Wait()
-	}
-
-	// Initialize TMCommon, TMApp, and TMNode container on each machine
+	// Remove TMCommon, TMApp, and TMNode container on each machine
 	var wg sync.WaitGroup
 	for _, mach := range machines {
 		wg.Add(1)
 		go func(mach string) {
 			defer wg.Done()
-			rmTMCommon(mach, app)
-			rmTMData(mach, app)
-			rmTMApp(mach, app)
-			rmTMNode(mach, app)
+			rmContainer(mach, Fmt("%v_tmcommon", app), force)
+			rmContainer(mach, Fmt("%v_tmdata", app), force)
+			rmContainer(mach, Fmt("%v_tmapp", app), force)
+			rmContainer(mach, Fmt("%v_tmnode", app), force)
 		}(mach)
 	}
 	wg.Wait()
 }
 
-func rmTMCommon(mach, app string) error {
-	args := []string{"ssh", mach, Fmt(`docker rm %v_tmcommon`, app)}
-	if !runProcess("rm-tmcommon-"+mach, "docker-machine", args) {
-		return errors.New("Failed to rm tmcommon on machine " + mach)
+func rmContainer(mach, container string, force bool) error {
+	opts := ""
+	if force {
+		opts = "-f"
+	} else {
+		opts = "-y"
 	}
-	return nil
-}
-
-func rmTMData(mach, app string) error {
-	args := []string{"ssh", mach, Fmt(`docker rm %v_tmdata`, app)}
-	if !runProcess("rm-tmdata-"+mach, "docker-machine", args) {
-		return errors.New("Failed to rm tmdata on machine " + mach)
-	}
-	return nil
-}
-
-func rmTMApp(mach, app string) error {
-	args := []string{"ssh", mach, Fmt(`docker rm %v_tmapp`, app)}
-	if !runProcess("rm-tmapp-"+mach, "docker-machine", args) {
-		return errors.New("Failed to rm tmapp on machine " + mach)
-	}
-	return nil
-}
-
-func rmTMNode(mach, app string) error {
-	args := []string{"ssh", mach, Fmt(`docker rm %v_tmnode`, app)}
-	if !runProcess("rm-tmnode-"+mach, "docker-machine", args) {
-		return errors.New("Failed to rm tmnode on machine " + mach)
+	args := []string{"ssh", mach, Fmt(`docker rm %v %v`, opts, container)}
+	if !runProcess(Fmt("rm-%v-%v", container, mach), "docker-machine", args) {
+		return errors.New(Fmt("Failed to rm %v on machine %v", container, mach))
 	}
 	return nil
 }
